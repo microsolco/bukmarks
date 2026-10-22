@@ -1,0 +1,2 @@
+# GitFavs
+CLI bookmarks manager

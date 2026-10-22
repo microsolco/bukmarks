@@ -1,4 +1,4 @@
-"""Interfaccia da riga di comando di bukmarks."""
+"""Interfaccia da riga di comando di GitFavs."""
 
 from __future__ import annotations
 
@@ -13,10 +13,11 @@ from pathlib import Path
 
 from . import __version__, colors, exporters, gitsync
 from .colors import paint
-from .store import (WEB_SCHEMES, Bookmark, BukmarksError, Library, clean, default_home, is_safe_href,
+from .store import (FILE_NAME, WEB_SCHEMES, Bookmark, GitFavsError, Library, clean, default_home, is_safe_href,
                     normalize_tags, normalize_url)
 
-UA = {"User-Agent": "Mozilla/5.0 (compatible; bukmarks)"}
+EXPORT_NAME = "bookmarks.html"  # export automatico accanto al JSON
+UA = {"User-Agent": "Mozilla/5.0 (compatible; GitFavs)"}
 
 
 # -- helper ------------------------------------------------------------------
@@ -40,16 +41,18 @@ def fetch_title(url: str) -> str:
 
 
 def persist(lib: Library, message: str) -> None:
-    """Salva il JSON, poi commit + push automatici."""
+    """Salva il JSON, esporta l'HTML, poi commit + push automatici."""
     lib.save()
-    res = gitsync.autosave(lib.home, message)
+    (lib.home / EXPORT_NAME).write_text(exporters.export_html(lib.items, "Bookmarks"), encoding="utf-8")
+    colors.info(f"  export · {paint(str(lib.home / EXPORT_NAME), 'cyan')}")
+    res = gitsync.autosave(lib.home, message, (FILE_NAME, EXPORT_NAME))
     parts = []
     if res.commit:
         parts.append(f"commit {res.commit}")
     if res.pushed:
         parts.append("push ok")
     elif res.pushed is None:
-        parts.append("solo locale (nessun remote: `bukmarks remote <url>`)")
+        parts.append("solo locale (nessun remote: `gf remote <url>`)")
     if parts:
         colors.info("  git · " + " · ".join(parts))
     if res.pushed is False:
@@ -101,7 +104,7 @@ def cmd_add(a) -> None:
     lib = load()
     url = normalize_url(a.url)
     if dup := lib.by_url(url):
-        raise BukmarksError(f"gia' presente come #{dup.id}: {dup.title}")
+        raise GitFavsError(f"gia' presente come #{dup.id}: {dup.title}")
     title = a.title or ("" if a.no_fetch else fetch_title(url))
     if not title and not a.title and not a.no_fetch:
         colors.warn("titolo non recuperato, uso l'indirizzo (modificabile con `edit`)")
@@ -114,7 +117,7 @@ def cmd_add(a) -> None:
 
 def cmd_find(a) -> None:
     if not a.query and not a.tag:
-        raise BukmarksError("indica cosa cercare, oppure --tag")
+        raise GitFavsError("indica cosa cercare, oppure --tag")
     lib = load()
     found = lib.search(a.query, a.tag, everywhere=a.all, regex=a.regex)
     label = " ".join(a.query) + (" " if a.query and a.tag else "") + " ".join("#" + t for t in normalize_tags(a.tag))
@@ -161,7 +164,7 @@ def cmd_edit(a) -> None:
     if a.url is not None:
         url = normalize_url(a.url)
         if (dup := lib.by_url(url)) and dup.id != b.id:
-            raise BukmarksError(f"indirizzo gia' presente come #{dup.id}")
+            raise GitFavsError(f"indirizzo gia' presente come #{dup.id}")
         b.url, changed = url, True
     if a.note is not None:
         b.note, changed = clean(a.note), True
@@ -174,7 +177,7 @@ def cmd_edit(a) -> None:
             b.tags.remove(t)
             changed = True
     if not changed:
-        raise BukmarksError("nessuna modifica richiesta (--title --url --note --add-tag --rm-tag)")
+        raise GitFavsError("nessuna modifica richiesta (--title --url --note --add-tag --rm-tag)")
     from .store import now
     b.updated = now()
     colors.ok(f"modificato #{b.id}\n")
@@ -237,7 +240,7 @@ def cmd_import(a) -> None:
     for r in rows:
         try:
             url = normalize_url(r["url"])
-        except BukmarksError:
+        except GitFavsError:
             skipped += 1
             continue
         if lib.by_url(url):
@@ -319,11 +322,11 @@ def cmd_path(a) -> None:
 # -- parser ------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="bukmarks",
+        prog="gf",
         description="Gestore di bookmarks da terminale. Ogni modifica e' salvata con commit e push automatici.",
-        epilog="Dati in $BUKMARKS_HOME (default ~/.bukmarks). NO_COLOR disattiva i colori.",
+        epilog="Dati in $GITFAVS_HOME (default ~/.gitfavs). NO_COLOR disattiva i colori.",
     )
-    p.add_argument("-V", "--version", action="version", version=f"bukmarks {__version__}")
+    p.add_argument("-V", "--version", action="version", version=f"GitFavs {__version__}")
     sub = p.add_subparsers(dest="cmd", metavar="comando")
 
     def add(name, func, help, aliases=()):
@@ -374,7 +377,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="html = pagina pulita; netscape = importabile dai browser")
     s.add_argument("--title", default="Bookmarks", help="titolo della pagina")
 
-    s = add("import", cmd_import, "importa da JSON bukmarks o da HTML esportato dai browser")
+    s = add("import", cmd_import, "importa da JSON GitFavs o da HTML esportato dai browser")
     s.add_argument("file")
     s.add_argument("-T", "--tag", action="append", help="tag aggiunto a tutti gli importati")
 
@@ -401,7 +404,7 @@ def main(argv=None) -> int:
         return 0
     try:
         args.func(args)
-    except BukmarksError as e:
+    except GitFavsError as e:
         colors.error(str(e))
         return 1
     except KeyboardInterrupt:

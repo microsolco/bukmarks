@@ -1,38 +1,38 @@
-# bukmarks
+# GitFavs
 
 Bookmarks manager da riga di comando (Python ≥ 3.9, nessuna dipendenza). I bookmarks stanno in un unico
-file JSON (`~/.bukmarks/bookmarks.json`, cambiabile con `BUKMARKS_HOME`) dentro un repository git:
+file JSON (`~/.gitfavs/bookmarks.json`, cambiabile con `GITFAVS_HOME`) dentro un repository git:
 **ogni modifica fa commit e, se c'è un remote, push in automatico.**
 
 ## Installazione
 
 ```bash
-pip install -e .        # crea il comando `bukmarks`
-# oppure, senza installare: python3 -m bukmarks <comando>
+pip install -e .        # crea il comando `gf`
+# oppure, senza installare: python3 -m gitfavs <comando>
 ```
 
 ## Uso
 
 | Comando | Descrizione |
 |---|---|
-| `bukmarks add <url> [-t titolo] [-T tag,tag] [-n nota]` | salva un indirizzo (titolo letto dalla pagina) |
-| `bukmarks find <testo…> [-T tag] [-a] [-r]` | cerca in nome e indirizzo (`-a` anche tag/note, `-r` regex) |
-| `bukmarks list [-T tag] [-s id\|title\|date]` | elenca tutto |
-| `bukmarks show <id>` / `open <id…>` | dettagli / apri nel browser |
-| `bukmarks edit <id> [--title --url --note --add-tag --rm-tag]` | modifica |
-| `bukmarks rm <id…> [-y]` | elimina |
-| `bukmarks tags` | tag e conteggi |
-| `bukmarks export <file.html> [-f netscape]` | pagina HTML pulita con filtro live, o formato importabile dai browser |
-| `bukmarks import <file.json\|.html>` | importa da JSON o dai preferiti di Chrome/Firefox/Safari (le cartelle diventano tag) |
-| `bukmarks check [-T tag]` | trova i link non raggiungibili |
-| `bukmarks remote [url]` | imposta il repository remoto per il push |
-| `bukmarks sync` | pull + push (più computer) |
-| `bukmarks log` / `path` | cronologia git / percorso del JSON |
+| `gf add <url> [-t titolo] [-T tag,tag] [-n nota]` | salva un indirizzo (titolo letto dalla pagina) |
+| `gf find <testo…> [-T tag] [-a] [-r]` | cerca in nome e indirizzo (`-a` anche tag/note, `-r` regex) |
+| `gf list [-T tag] [-s id\|title\|date]` | elenca tutto |
+| `gf show <id>` / `open <id…>` | dettagli / apri nel browser |
+| `gf edit <id> [--title --url --note --add-tag --rm-tag]` | modifica |
+| `gf rm <id…> [-y]` | elimina |
+| `gf tags` | tag e conteggi |
+| `gf export <file.html> [-f netscape]` | pagina HTML pulita con filtro live, o formato importabile dai browser |
+| `gf import <file.json\|.html>` | importa da JSON o dai preferiti di Chrome/Firefox/Safari (le cartelle diventano tag) |
+| `gf check [-T tag]` | trova i link non raggiungibili |
+| `gf remote [url]` | imposta il repository remoto per il push |
+| `gf sync` | pull + push (più computer) |
+| `gf log` / `path` | cronologia git / percorso del JSON |
 
 ## Backup su GitHub
 
 ```bash
-bukmarks remote git@github.com:utente/miei-bookmarks.git
+gf remote git@github.com:utente/miei-bookmarks.git
 ```
-Da quel momento ogni `add`/`edit`/`rm` fa push. Su un altro computer: `git clone <url> ~/.bukmarks`.
+Da quel momento ogni `add`/`edit`/`rm` fa push. Su un altro computer: `git clone <url> ~/.gitfavs`.
 Se il push fallisce (offline) il commit resta locale e viene inviato al prossimo salvataggio o con `sync`.

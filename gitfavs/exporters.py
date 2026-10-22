@@ -8,7 +8,7 @@ from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
 
-from .store import BukmarksError, Bookmark, is_safe_href, normalize_tags, normalize_url
+from .store import GitFavsError, Bookmark, is_safe_href, normalize_tags, normalize_url
 
 _CSS = """
 :root{--bg:#fafaf9;--fg:#1c1917;--mut:#78716c;--line:#e7e5e4;--acc:#2563eb;--chip:#f0efed}
@@ -135,12 +135,12 @@ def read_import(path: Path) -> list[dict]:
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError as e:
-        raise BukmarksError(f"impossibile leggere {path}: {e}") from e
+        raise GitFavsError(f"impossibile leggere {path}: {e}") from e
     if path.suffix.lower() == ".json":
         try:
             data = json.loads(text)
         except ValueError as e:
-            raise BukmarksError(f"JSON non valido: {e}") from e
+            raise GitFavsError(f"JSON non valido: {e}") from e
         rows = data.get("bookmarks", []) if isinstance(data, dict) else data
         return [
             {"url": r["url"], "title": r.get("title", ""), "tags": r.get("tags", []), "note": r.get("note", "")}

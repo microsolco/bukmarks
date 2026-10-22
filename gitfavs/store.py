@@ -15,12 +15,16 @@ FILE_NAME = "bookmarks.json"
 VERSION = 1
 
 
-class BukmarksError(Exception):
+class GitFavsError(Exception):
     """Errore atteso, mostrato all'utente senza traceback."""
 
 
 def default_home() -> Path:
-    return Path(os.environ.get("BUKMARKS_HOME") or Path.home() / ".bukmarks").expanduser()
+    """$GITFAVS_HOME, altrimenti ~/.gitfavs (o ~/.bukmarks se esiste gia': dati della vecchia versione)."""
+    if env := os.environ.get("GITFAVS_HOME"):
+        return Path(env).expanduser()
+    new, legacy = Path.home() / ".gitfavs", Path.home() / ".bukmarks"
+    return legacy if legacy.exists() and not new.exists() else new
 
 
 def now() -> str:
@@ -44,17 +48,17 @@ def is_safe_href(url: str, schemes=SAFE_SCHEMES) -> bool:
 def normalize_url(url: str) -> str:
     url = clean(url)
     if not url:
-        raise BukmarksError("indirizzo vuoto")
+        raise GitFavsError("indirizzo vuoto")
     m = re.match(r"^([a-zA-Z][a-zA-Z0-9+.-]*):(//)?", url)
     if m and (m.group(2) or not re.match(r"^[^:/]+:\d", url)):
         # schema esplicito: solo quelli sicuri (niente javascript:, data:, file:, ...)
         if m.group(1).lower() not in SAFE_SCHEMES:
-            raise BukmarksError(f"schema non consentito: {m.group(1)}:")
+            raise GitFavsError(f"schema non consentito: {m.group(1)}:")
     else:
         url = "https://" + url
     parts = urlsplit(url)
     if not parts.netloc and parts.scheme != "mailto":
-        raise BukmarksError(f"indirizzo non valido: {url}")
+        raise GitFavsError(f"indirizzo non valido: {url}")
     return url
 
 
@@ -103,7 +107,7 @@ class Library:
             self.items = [Bookmark(**b) for b in data.get("bookmarks", [])]
             self.next_id = int(data.get("next_id", 0)) or 1
         except (ValueError, TypeError, AttributeError) as e:
-            raise BukmarksError(f"file dei bookmarks corrotto ({self.path}): {e}") from e
+            raise GitFavsError(f"file dei bookmarks corrotto ({self.path}): {e}") from e
         self.next_id = max([self.next_id] + [b.id + 1 for b in self.items])
         return self
 
@@ -133,7 +137,7 @@ class Library:
         for b in self.items:
             if b.id == bid:
                 return b
-        raise BukmarksError(f"nessun bookmark con id {bid}")
+        raise GitFavsError(f"nessun bookmark con id {bid}")
 
     def add(self, url: str, title: str, tags=None, note: str = "") -> Bookmark:
         ts = now()
@@ -162,7 +166,7 @@ class Library:
             try:
                 rxs = [re.compile(t, re.IGNORECASE) for t in terms]
             except re.error as e:
-                raise BukmarksError(f"espressione regolare non valida: {e}") from e
+                raise GitFavsError(f"espressione regolare non valida: {e}") from e
             hit = lambda t, text: rxs[t].search(text) is not None  # noqa: E731
         else:
             low = [t.lower() for t in terms]

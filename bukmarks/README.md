@@ -1,2 +1,0 @@
-# bukmarks
-CLI bookmarks manager 

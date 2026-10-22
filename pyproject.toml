@@ -3,7 +3,7 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bukmarks"
+name = "gitfavs"
 dynamic = ["version"]
 description = "Bookmarks manager da riga di comando con salvataggio automatico su git"
 readme = "README.md"
@@ -11,7 +11,7 @@ requires-python = ">=3.9"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ email = "just4dev@pm.me" }]
-keywords = ["bookmarks", "cli", "git", "terminal"]
+keywords = ["bookmarks", "cli", "git", "terminal", "favorites"]
 classifiers = [
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
@@ -23,10 +23,10 @@ classifiers = [
 dependencies = []
 
 [project.scripts]
-bukmarks = "bukmarks.cli:main"
+gf = "gitfavs.cli:main"
 
 [tool.setuptools]
-packages = ["bukmarks"]
+packages = ["gitfavs"]
 
 [tool.setuptools.dynamic]
-version = { attr = "bukmarks.__version__" }
+version = { attr = "gitfavs.__version__" }

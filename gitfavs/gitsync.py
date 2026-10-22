@@ -6,7 +6,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from .store import FILE_NAME, BukmarksError
+from .store import FILE_NAME, GitFavsError
 
 
 @dataclass
@@ -22,11 +22,11 @@ def git(home: Path, *args: str, check: bool = True) -> subprocess.CompletedProce
             ["git", *args], cwd=home, capture_output=True, text=True, timeout=120
         )
     except FileNotFoundError as e:
-        raise BukmarksError("git non trovato nel PATH") from e
+        raise GitFavsError("git non trovato nel PATH") from e
     except subprocess.TimeoutExpired as e:
-        raise BukmarksError(f"git {args[0]}: timeout") from e
+        raise GitFavsError(f"git {args[0]}: timeout") from e
     if check and proc.returncode != 0:
-        raise BukmarksError(f"git {args[0]}: {(proc.stderr or proc.stdout).strip()}")
+        raise GitFavsError(f"git {args[0]}: {(proc.stderr or proc.stdout).strip()}")
     return proc
 
 
@@ -45,7 +45,7 @@ def set_remote(home: Path, url: str) -> None:
     url = url.strip()
     # niente opzioni git camuffate da URL (-o...) ne' trasporti che eseguono comandi (ext::)
     if not url or url.startswith("-") or "::" in url or any(c.isspace() for c in url):
-        raise BukmarksError(f"URL del remote non valido: {url!r}")
+        raise GitFavsError(f"URL del remote non valido: {url!r}")
     ensure_repo(home)
     verb = "set-url" if remote_url(home) else "add"
     git(home, "remote", verb, "origin", url)
@@ -54,15 +54,15 @@ def set_remote(home: Path, url: str) -> None:
 def _identity_args(home: Path) -> list[str]:
     args: list[str] = []
     if not git(home, "config", "user.name", check=False).stdout.strip():
-        args += ["-c", "user.name=bukmarks"]
+        args += ["-c", "user.name=GitFavs"]
     if not git(home, "config", "user.email", check=False).stdout.strip():
-        args += ["-c", "user.email=bukmarks@localhost"]
+        args += ["-c", "user.email=gitfavs@localhost"]
     return args
 
 
-def commit(home: Path, message: str) -> str | None:
-    git(home, "add", "--", FILE_NAME)
-    if not git(home, "status", "--porcelain", "--", FILE_NAME).stdout.strip():
+def commit(home: Path, message: str, files: tuple[str, ...] = (FILE_NAME,)) -> str | None:
+    git(home, "add", "--", *files)
+    if not git(home, "status", "--porcelain", "--", *files).stdout.strip():
         return None
     git(home, *_identity_args(home), "commit", "-q", "-m", message)
     return git(home, "rev-parse", "--short", "HEAD").stdout.strip()
@@ -72,15 +72,15 @@ def push(home: Path) -> None:
     git(home, "push", "-q", "-u", "origin", "HEAD")
 
 
-def autosave(home: Path, message: str) -> SaveResult:
+def autosave(home: Path, message: str, files: tuple[str, ...] = (FILE_NAME,)) -> SaveResult:
     """Commit e (se c'e' un remote) push. Un push fallito non perde i dati: il commit resta locale."""
     ensure_repo(home)
-    res = SaveResult(commit=commit(home, message))
+    res = SaveResult(commit=commit(home, message, files))
     if remote_url(home):
         try:
             push(home)
             res.pushed = True
-        except BukmarksError as e:
+        except GitFavsError as e:
             res.pushed, res.error = False, str(e)
     return res
 
@@ -89,7 +89,7 @@ def sync(home: Path) -> str:
     """Pull (rebase) dal remote e push. Ritorna un messaggio di esito."""
     ensure_repo(home)
     if not remote_url(home):
-        raise BukmarksError("nessun remote configurato: usa `bukmarks remote <url>`")
+        raise GitFavsError("nessun remote configurato: usa `gf remote <url>`")
     git(home, "fetch", "-q", "origin")
     branch = git(home, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
     has_remote_branch = git(home, "rev-parse", "--verify", "-q", f"origin/{branch}", check=False).returncode == 0
@@ -99,7 +99,7 @@ def sync(home: Path) -> str:
             proc = git(home, "pull", "-q", "--rebase", "origin", branch, check=False)
             if proc.returncode != 0:
                 git(home, "rebase", "--abort", check=False)
-                raise BukmarksError(
+                raise GitFavsError(
                     "conflitto durante il pull, rebase annullato:\n"
                     + (proc.stderr or proc.stdout).strip()
                 )
