@@ -22,7 +22,8 @@ pip install -e .        # crea il comando `gf`
 | `gf edit <id> [--title --url --note --add-tag --rm-tag]` | modifica |
 | `gf rm <id…> [-y]` | elimina |
 | `gf tags` | tag e conteggi |
-| `gf export <file.html> [-f netscape]` | pagina HTML pulita con filtro live, o formato importabile dai browser |
+| `gf export <file.html> [-f netscape]` | pagina HTML pulita divisa in sezioni per tag, con filtro live, o formato importabile dai browser |
+| `gf refresh` | rigenera `bookmarks.html` in `~/.gitfavs` (commit e push se cambia) |
 | `gf import <file.json\|.html>` | importa da JSON o dai preferiti di Chrome/Firefox/Safari (le cartelle diventano tag) |
 | `gf check [-T tag]` | trova i link non raggiungibili |
 | `gf remote [url]` | imposta il repository remoto per il push |

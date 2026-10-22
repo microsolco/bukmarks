@@ -233,6 +233,12 @@ def cmd_export(a) -> None:
     colors.ok(f"{len(lib.items)} bookmarks esportati in {paint(str(out), 'cyan', 'underline')}")
 
 
+def cmd_refresh(a) -> None:
+    lib = load()
+    persist(lib, "refresh: export HTML")
+    colors.ok(f"{len(lib.items)} bookmarks ri-esportati in {paint(str(lib.home / EXPORT_NAME), 'cyan', 'underline')}")
+
+
 def cmd_import(a) -> None:
     lib = load()
     rows = exporters.read_import(Path(a.file).expanduser())
@@ -376,6 +382,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("-f", "--format", choices=["html", "netscape"], default="html",
                    help="html = pagina pulita; netscape = importabile dai browser")
     s.add_argument("--title", default="Bookmarks", help="titolo della pagina")
+
+    add("refresh", cmd_refresh, f"rigenera {EXPORT_NAME} nella cartella dati (con commit e push se cambia)")
 
     s = add("import", cmd_import, "importa da JSON GitFavs o da HTML esportato dai browser")
     s.add_argument("file")

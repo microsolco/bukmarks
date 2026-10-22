@@ -20,6 +20,10 @@ h1{font-size:1.5rem;margin:0 0 .25rem;letter-spacing:-.01em}
 .sub{color:var(--mut);font-size:.875rem;margin:0 0 1.5rem}
 input{width:100%;padding:.6rem .8rem;font:inherit;color:inherit;background:transparent;border:1px solid var(--line);border-radius:8px;margin-bottom:1.5rem}
 input:focus{outline:2px solid var(--acc);outline-offset:1px}
+section{margin:0 0 2rem}
+h2{display:flex;align-items:baseline;gap:.5rem;margin:0 0 .25rem;font-size:1.0625rem;letter-spacing:-.005em}
+h2 small{color:var(--mut);font-size:.75rem;font-weight:400}
+.none{color:var(--mut)}
 ul{list-style:none;margin:0;padding:0}
 li{padding:.8rem 0;border-top:1px solid var(--line)}
 li:last-child{border-bottom:1px solid var(--line)}
@@ -32,21 +36,46 @@ a:hover{text-decoration:underline}
 """
 
 _JS = """
-const q=document.getElementById('q'),rows=[...document.querySelectorAll('li')],n=document.getElementById('n');
-q.addEventListener('input',()=>{const t=q.value.toLowerCase().split(/\\s+/).filter(Boolean);let c=0;
-rows.forEach(r=>{const ok=t.every(x=>r.dataset.s.includes(x));r.hidden=!ok;if(ok)c++});n.textContent=c});
+const q=document.getElementById('q'),rows=[...document.querySelectorAll('li')],secs=[...document.querySelectorAll('section')],n=document.getElementById('n');
+q.addEventListener('input',()=>{const t=q.value.toLowerCase().split(/\\s+/).filter(Boolean),ids=new Set();
+rows.forEach(r=>{const ok=t.every(x=>r.dataset.s.includes(x));r.hidden=!ok;if(ok)ids.add(r.dataset.id)});
+secs.forEach(s=>{const v=s.querySelectorAll('li:not([hidden])').length;s.hidden=!v;s.querySelector('small').textContent=v});n.textContent=ids.size});
 """
 
 
-def export_html(items: list[Bookmark], title: str = "Bookmarks") -> str:
-    rows = []
+def _row(b: Bookmark) -> str:
+    tags = "".join(f'<span class="tag">#{escape(t)}</span>' for t in b.tags)
+    note = f'<p class="note">{escape(b.note)}</p>' if b.note else ""
+    search = escape(" ".join([b.title, b.url, *b.tags, b.note]).lower(), quote=True)
+    href = escape(b.url if is_safe_href(b.url) else "#", quote=True)
+    return (
+        f'<li data-id="{b.id}" data-s="{search}"><a href="{href}" rel="noopener noreferrer">{escape(b.title)}</a>'
+        f'<span class="url">{escape(b.url)}</span>{note}<div>{tags}</div></li>'
+    )
+
+
+def group_by_tag(items: list[Bookmark]) -> list[tuple[str | None, list[Bookmark]]]:
+    """Sezioni ordinate per tag; un link con piu' tag compare in ognuna. I senza tag (None) vanno in fondo."""
+    groups: dict[str, list[Bookmark]] = {}
+    untagged: list[Bookmark] = []
     for b in sorted(items, key=lambda b: b.title.lower()):
-        tags = "".join(f'<span class="tag">#{escape(t)}</span>' for t in b.tags)
-        note = f'<p class="note">{escape(b.note)}</p>' if b.note else ""
-        search = escape(" ".join([b.title, b.url, *b.tags, b.note]).lower(), quote=True)
-        rows.append(
-            f'<li data-s="{search}"><a href="{escape(b.url if is_safe_href(b.url) else '#', quote=True)}" rel="noopener noreferrer">{escape(b.title)}</a>'
-            f'<span class="url">{escape(b.url)}</span>{note}<div>{tags}</div></li>'
+        for t in b.tags or []:
+            groups.setdefault(t, []).append(b)
+        if not b.tags:
+            untagged.append(b)
+    out: list[tuple[str | None, list[Bookmark]]] = sorted(groups.items(), key=lambda kv: kv[0].lower())
+    if untagged:
+        out.append((None, untagged))
+    return out
+
+
+def export_html(items: list[Bookmark], title: str = "Bookmarks") -> str:
+    sections = []
+    for tag, group in group_by_tag(items):
+        heading = f"#{escape(tag)}" if tag else '<span class="none">Senza tag</span>'
+        sections.append(
+            f"<section><h2>{heading}<small>{len(group)}</small></h2>"
+            f"<ul>{''.join(_row(b) for b in group)}</ul></section>"
         )
     stamp = datetime.now().strftime("%d/%m/%Y")
     return (
@@ -55,9 +84,9 @@ def export_html(items: list[Bookmark], title: str = "Bookmarks") -> str:
         f'<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; script-src \'unsafe-inline\'">'
         f"<title>{escape(title)}</title><style>{_CSS}</style></head><body><main>"
         f"<h1>{escape(title)}</h1>"
-        f'<p class="sub"><span id="n">{len(items)}</span> link · aggiornato il {stamp}</p>'
+        f'<p class="sub"><span id="n">{len(items)}</span> link · {max(len(sections), 0)} sezioni · aggiornato il {stamp}</p>'
         f'<input id="q" type="search" placeholder="Cerca per nome, indirizzo o tag…" autofocus>'
-        f"<ul>{''.join(rows)}</ul><script>{_JS}</script></main></body></html>\n"
+        f"{''.join(sections)}<script>{_JS}</script></main></body></html>\n"
     )
 
 
